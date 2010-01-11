@@ -1,0 +1,28 @@
+diff --git a/lib/ditz/model.rb b/lib/ditz/model.rb
+index 0629ff7..280e75f 100644
+--- a/lib/ditz/model.rb
++++ b/lib/ditz/model.rb
+@@ -41,8 +41,6 @@ class ModelObject
+         m = "__serialized_#{k}="
+         if o.respond_to? m
+           o.send m, v
+-        else
+-          $stderr.puts "warning: unknown field #{k.inspect} in YAML for #{type}; ignoring"
+         end
+       end
+       o.class.fields.each do |f, opts|
+diff --git a/sheila/sheila.rb b/sheila/sheila.rb
+index 8bb08d0..8e40f34 100644
+--- a/sheila/sheila.rb
++++ b/sheila/sheila.rb
+@@ -98,10 +98,6 @@ private
+   def save! message
+     message = message.gsub(/'/, "")
+     @storage.save @project
+-    ENV["GIT_AUTHOR_NAME"] = GIT_AUTHOR_NAME
+-    ENV["GIT_AUTHOR_EMAIL"] = GIT_AUTHOR_EMAIL
+-    system "git add #{File.dirname @project.pathname}/*.yaml"
+-    system "git commit -m 'issue update via Sheila: #{message}'"
+   end
+ end
+ 
