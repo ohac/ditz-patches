@@ -1,0 +1,57 @@
+diff --git a/bin/coditz.rb b/bin/coditz.rb
+new file mode 100755
+index 0000000..ed9136c
+--- /dev/null
++++ b/bin/coditz.rb
+@@ -0,0 +1,42 @@
++#!/usr/bin/ruby
++$LOAD_PATH.unshift(File.expand_path("#{File.dirname($0)}/../lib"))
++require 'rubygems'
++require 'cinatra'
++require 'yaml_waml'
++begin
++require 'trollop'
++include Trollop
++require 'ditz'
++=begin
++CONFIG_FN = ".ditz-config"
++PLUGIN_FN = ".ditz-plugins"
++config_dir = Ditz::find_dir_containing CONFIG_FN
++plugin_dir = Ditz::find_dir_containing PLUGIN_FN
++=end
++
++# ~/gems/gems/cinatra-0.4.2/README.markdown
++# ~/gems/gems/cinatra-0.4.2/lib/cinatra.rb
++# ~/gems/gems/cinatra-0.4.2/lib/cinatra/command.rb
++# bin/ditz
++# lib/ditz.rb
++# lib/ditz/operator.rb
++# lib/ditz/views.rb
++# lib/ditz/model-objects.rb
++# lib/ditz/model.rb
++# lib/ditz/lowline.rb
++command 'd' do |arg|
++  op = Ditz::Operator.new
++  Ditz::HookManager.print_hooks
++  #op.do cmd, project, config, ARGV
++  config = Ditz::Config.new
++  config.use_editor_if_possible = false
++  config.paginate = "never"
++p config
++  #project = Project.create_interactively
++  project = Ditz::Project.new
++  op.do 'help', project, config, []
++end
++
++rescue => x
++  p x
++end
+diff --git a/lib/ditz/lowline.rb b/lib/ditz/lowline.rb
+index a149a31..63db89b 100644
+--- a/lib/ditz/lowline.rb
++++ b/lib/ditz/lowline.rb
+@@ -241,4 +241,3 @@ module Lowline
+     (many)? ss : ss.first
+   end
+ end
+-
