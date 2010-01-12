@@ -1,9 +1,9 @@
 diff --git a/bin/coditz.rb b/bin/coditz.rb
 new file mode 100755
-index 0000000..739ba8e
+index 0000000..f5754c1
 --- /dev/null
 +++ b/bin/coditz.rb
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,83 @@
 +#!/usr/bin/ruby
 +$LOAD_PATH.unshift(File.expand_path("#{File.dirname($0)}/../lib"))
 +require 'rubygems'
@@ -28,17 +28,38 @@ index 0000000..739ba8e
 +lib/ditz/lowline.rb
 +=end
 +
-+def ditz_op(cmd, opts = [])
-+  config_dir = Ditz::find_dir_containing CONFIG_FN
++def ditz_plugin_file
 +  plugin_dir = Ditz::find_dir_containing PLUGIN_FN
-+  op = Ditz::Operator.new
-+  config = Ditz::Config.from File.join(config_dir || ".", CONFIG_FN)
++  File.join(plugin_dir || ".", PLUGIN_FN)
++end
++
++def ditz_config_file
++  config_dir = Ditz::find_dir_containing CONFIG_FN
++  File.join(config_dir || ".", CONFIG_FN)
++end
++
++def ditz_op(cmd, opts = [])
++  config_file = ditz_config_file
++  unless File.exist?(config_file)
++    puts 'do init first.'
++    return
++  end
++  config = Ditz::Config.from config_file
 +  config.use_editor_if_possible = false # overwrite
 +  config.paginate = "never" # overwrite
++  op = Ditz::Operator.new
 +  issue_dir = Pathname.new(config.issue_dir)
-+  storage = Ditz::FileStorage.new issue_dir
-+  project = storage.load
-+  op.do cmd, project, config, opts
++  unless issue_dir.exist?
++    issue_dir.mkdir
++    fn = issue_dir + Ditz::FileStorage::PROJECT_FN
++    return if cmd != 'init'
++    project = op.init
++    project.save! fn
++  else
++    storage = Ditz::FileStorage.new issue_dir
++    project = storage.load
++    op.do cmd, project, config, opts
++  end
 +end
 +
 +command 'dhelp' do |arg|
@@ -51,6 +72,15 @@ index 0000000..739ba8e
 +
 +command 'todo' do |arg|
 +  ditz_op 'todo'
++end
++
++command 'init' do |arg|
++  config_file = ditz_config_file
++  unless File.exist?(config_file)
++    new_config = Ditz::Config.create_interactively # :defaults_from => config
++    new_config.save! config_file
++  end
++  ditz_op 'init'
 +end
 +
 +# FIXME see http://github.com/jugyo/cinatra/issues/#issue/4
