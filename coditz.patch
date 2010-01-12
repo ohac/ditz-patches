@@ -1,9 +1,9 @@
 diff --git a/bin/coditz.rb b/bin/coditz.rb
 new file mode 100755
-index 0000000..f5754c1
+index 0000000..1e7dd44
 --- /dev/null
 +++ b/bin/coditz.rb
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,92 @@
 +#!/usr/bin/ruby
 +$LOAD_PATH.unshift(File.expand_path("#{File.dirname($0)}/../lib"))
 +require 'rubygems'
@@ -47,17 +47,20 @@ index 0000000..f5754c1
 +  config = Ditz::Config.from config_file
 +  config.use_editor_if_possible = false # overwrite
 +  config.paginate = "never" # overwrite
-+  op = Ditz::Operator.new
 +  issue_dir = Pathname.new(config.issue_dir)
 +  unless issue_dir.exist?
 +    issue_dir.mkdir
 +    fn = issue_dir + Ditz::FileStorage::PROJECT_FN
 +    return if cmd != 'init'
-+    project = op.init
++    project = Ditz::Project.create(
++        :name => "myproject",
++        :components => [ Ditz::Component.create(:name => "mycomponent") ]
++        )
 +    project.save! fn
 +  else
 +    storage = Ditz::FileStorage.new issue_dir
 +    project = storage.load
++    op = Ditz::Operator.new
 +    op.do cmd, project, config, opts
 +  end
 +end
@@ -77,7 +80,13 @@ index 0000000..f5754c1
 +command 'init' do |arg|
 +  config_file = ditz_config_file
 +  unless File.exist?(config_file)
-+    new_config = Ditz::Config.create_interactively # :defaults_from => config
++    new_config = Ditz::Config.create(
++        :name => "OHASHI Hideya",
++        :email => "ohachige@gmail.com",
++        :issue_dir => ".ditz",
++        :use_editor_if_possible => false,
++        :paginate => "never"
++        )
 +    new_config.save! config_file
 +  end
 +  ditz_op 'init'
