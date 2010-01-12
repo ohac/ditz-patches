@@ -1,0 +1,267 @@
+diff --git a/bin/coditz_for_0.5.rb b/bin/coditz_for_0.5.rb
+new file mode 100755
+index 0000000..c0d3c5e
+--- /dev/null
++++ b/bin/coditz_for_0.5.rb
+@@ -0,0 +1,261 @@
++#!/usr/bin/env ruby
++# -*- coding: utf-8 -*-
++require 'rubygems'
++require 'ditz'
++require 'trollop'
++include Trollop
++require 'cinatra'
++
++# FIXME see http://github.com/jugyo/cinatra/issues/#issue/4
++begin
++
++CONFIG_FN = ".ditz-config"
++PLUGIN_FN = ".ditz-plugins"
++
++module Ditz
++  require 'pathname'
++  def self.find_dir_containing target, start=Pathname.new(".")
++    return start if (start + target).exist?
++    unless start.parent.realpath == start.realpath
++      find_dir_containing target, start.parent
++    end
++  end
++end
++
++def ditz_plugin_file
++  plugin_dir = Ditz::find_dir_containing PLUGIN_FN
++  File.join(plugin_dir || ".", PLUGIN_FN)
++end
++
++def ditz_config_file
++  config_dir = Ditz::find_dir_containing CONFIG_FN
++  File.join(config_dir || ".", CONFIG_FN)
++end
++
++def ditz_op(cmd, opts = [])
++  config_file = ditz_config_file
++  unless File.exist?(config_file)
++    puts 'do init first.'
++    return
++  end
++  config = Ditz::Config.from config_file
++  issue_dir = Pathname.new(config.issue_dir)
++  unless issue_dir.exist?
++    puts 'something wrong.'
++    return
++  end
++  storage = Ditz::FileStorage.new issue_dir
++  project = storage.load
++  op = Ditz::Operator.new
++  op.do cmd, project, config, opts
++  changed_issues = project.issues.select { |i| i.changed? }
++  changed_not_added_issues = changed_issues - project.added_issues
++  storage.save project
++end
++
++def get_name_from_mercurial
++  path = Ditz.find_dir_containing(".hg")
++  len = path ? path.to_s.size : 100
++  username = `hg show ui.username` || ''
++  username.chomp!
++  if username.size > 0
++    a = username.split(" ")
++    email = a.pop
++    email = email[1..-2]
++    name = a.join(" ")
++    [len, name, email]
++  end
++end
++
++def get_name_from_git
++  path = Ditz.find_dir_containing(".git")
++  len = path ? path.to_s.size : 100
++  [len, `git config user.name`.chomp, `git config user.email`.chomp]
++end
++
++def get_name
++  as = [get_name_from_mercurial, get_name_from_git].select{|a|!a.nil?}
++  as.min_by{|a|a[0]}
++end
++
++command 'ditz_help' do |arg|
++  ditz_op 'help'
++end
++
++command 'init' do |arg|
++  config_file = ditz_config_file
++  len, name, email = get_name
++  unless File.exist?(config_file)
++    config = Ditz::Config.create(nil,
++        :name => name,
++        :email => email,
++        :issue_dir => ".ditz",
++        :paginate => "never"
++        )
++    config.save! config_file
++    issue_dir = Pathname.new(config.issue_dir)
++    issue_dir.mkdir
++    fn = issue_dir + Ditz::FileStorage::PROJECT_FN
++    project = Ditz::Project.create(nil,
++        {:name => "myproject",
++        :components => [ Ditz::Component.create(nil, :name => "mycomponent") ]}
++        )
++    project.save! fn
++  end
++end
++
++command 'todo' do |arg|
++  ditz_op 'todo'
++end
++
++command 'add' do |arg|
++  ditz_op 'add', ['-n']
++end
++
++command 'close' do |arg|
++  ditz_op 'close', ['-n', arg] # TODO select 1,2,3
++end
++
++command 'comment' do |arg|
++  args = arg.split(' ')
++  issue = args.shift
++  ditz_op 'comment', [issue, '-m', args.join(' ')]
++end
++
++command 'drop' do |arg|
++  ditz_op 'drop', [arg]
++end
++
++command 'show' do |arg|
++  ditz_op 'show', [arg]
++end
++
++command 'changelog' do |arg|
++  ditz_op 'changelog', [arg]
++end
++
++command 'log' do
++  ditz_op 'log'
++end
++
++command 'shortlog' do
++  ditz_op 'shortlog'
++end
++
++command 'html' do |arg|
++  opts = []
++  opts << arg if arg
++  ditz_op 'html', opts
++end
++
++command 'grep' do |arg|
++  opts = []
++  opts << arg if arg
++  ditz_op 'grep', opts # TODO support ignore case
++end
++
++command 'status' do |arg|
++  opts = []
++  opts << arg if arg
++  ditz_op 'status', opts
++end
++
++command 'releases' do
++  ditz_op 'releases'
++end
++
++command 'validate' do
++  ditz_op 'validate'
++end
++
++command 'release' do |arg|
++  opts = []
++  opts << arg if arg
++  ditz_op 'release', opts
++end
++
++command 'reconfigure' do
++  # TODO
++end
++
++command 'edit' do
++  # TODO
++end
++
++command 'add-reference' do |arg|
++  # TODO interactive only!
++  args = arg.split(' ')
++  issue = args.shift
++  comment = args.join(' ')
++  comment = nil if comment.size == 0
++  ditz_op 'add-reference', [issue] + (comment ? ['-m', comment] : ['-n'])
++end
++
++command 'add-component' do |arg|
++  # TODO interactive only!
++  ditz_op 'add-component'
++end
++
++command 'set-component' do |arg|
++  args = arg.split(' ')
++  issue = args.shift
++  component = args.shift
++  comment = args.join(' ')
++  comment = nil if comment.size == 0
++  ditz_op 'set-component', [issue, component] +
++      (comment ? ['-m', comment] : ['-n'])
++end
++
++command 'add-release' do |arg|
++  args = arg.split(' ')
++  name = args.shift
++  comment = args.join(' ')
++  comment = nil if comment.size == 0
++  ditz_op 'add-release', [name] + (comment ? ['-m', comment] : ['-n'])
++end
++
++command 'drop-release' do |arg|
++  ditz_op 'drop-release', [arg]
++end
++
++command 'assign' do |arg|
++  args = arg.split(' ')
++  issue = args.shift
++  release = args.shift
++  comment = args.join(' ')
++  comment = nil if comment.size == 0
++  ditz_op 'assign', [issue, release] + (comment ? ['-m', comment] : ['-n'])
++end
++
++command 'unassign' do |arg|
++  args = arg.split(' ')
++  issue = args.shift
++  comment = args.join(' ')
++  comment = nil if comment.size == 0
++  ditz_op 'unassign', [issue] + (comment ? ['-m', comment] : ['-n'])
++end
++
++command 'start' do |arg|
++  args = arg.split(' ')
++  issue = args.shift
++  comment = args.join(' ')
++  comment = nil if comment.size == 0
++  ditz_op 'start', [issue] + (comment ? ['-m', comment] : ['-n'])
++end
++
++command 'stop' do |arg|
++  args = arg.split(' ')
++  issue = args.shift
++  comment = args.join(' ')
++  comment = nil if comment.size == 0
++  ditz_op 'stop', [issue] + (comment ? ['-m', comment] : ['-n'])
++end
++
++command 'print_hooks' do |arg|
++  Ditz::HookManager.print_hooks
++end
++
++# FIXME see http://github.com/jugyo/cinatra/issues/#issue/4
++rescue => x
++  puts x.backtrace
++end
