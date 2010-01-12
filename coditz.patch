@@ -1,48 +1,64 @@
 diff --git a/bin/coditz.rb b/bin/coditz.rb
 new file mode 100755
-index 0000000..ed9136c
+index 0000000..0e41d30
 --- /dev/null
 +++ b/bin/coditz.rb
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,58 @@
 +#!/usr/bin/ruby
 +$LOAD_PATH.unshift(File.expand_path("#{File.dirname($0)}/../lib"))
 +require 'rubygems'
 +require 'cinatra'
 +require 'yaml_waml'
++
++# FIXME see http://github.com/jugyo/cinatra/issues/#issue/4
 +begin
++
 +require 'trollop'
 +include Trollop
 +require 'ditz'
-+=begin
++
 +CONFIG_FN = ".ditz-config"
 +PLUGIN_FN = ".ditz-plugins"
 +config_dir = Ditz::find_dir_containing CONFIG_FN
 +plugin_dir = Ditz::find_dir_containing PLUGIN_FN
++
++=begin
++~/gems/gems/cinatra-0.4.2/README.markdown
++~/gems/gems/cinatra-0.4.2/lib/cinatra.rb
++~/gems/gems/cinatra-0.4.2/lib/cinatra/command.rb
++bin/ditz
++lib/ditz.rb
++lib/ditz/operator.rb
++lib/ditz/views.rb
++lib/ditz/model-objects.rb
++lib/ditz/model.rb
++lib/ditz/lowline.rb
 +=end
 +
-+# ~/gems/gems/cinatra-0.4.2/README.markdown
-+# ~/gems/gems/cinatra-0.4.2/lib/cinatra.rb
-+# ~/gems/gems/cinatra-0.4.2/lib/cinatra/command.rb
-+# bin/ditz
-+# lib/ditz.rb
-+# lib/ditz/operator.rb
-+# lib/ditz/views.rb
-+# lib/ditz/model-objects.rb
-+# lib/ditz/model.rb
-+# lib/ditz/lowline.rb
-+command 'd' do |arg|
++command 'dhelp' do |arg|
 +  op = Ditz::Operator.new
-+  Ditz::HookManager.print_hooks
-+  #op.do cmd, project, config, ARGV
 +  config = Ditz::Config.new
 +  config.use_editor_if_possible = false
 +  config.paginate = "never"
-+p config
-+  #project = Project.create_interactively
-+  project = Ditz::Project.new
-+  op.do 'help', project, config, []
++  op.do 'help', nil, config, []
 +end
 +
++command 'print_hooks' do |arg|
++  Ditz::HookManager.print_hooks
++end
++
++command 'todo' do |arg|
++  op = Ditz::Operator.new
++  config = Ditz::Config.from File.join(config_dir || ".", CONFIG_FN)
++  config.use_editor_if_possible = false # overwrite
++  config.paginate = "never" # overwrite
++  issue_dir = Pathname.new(config.issue_dir)
++  storage = Ditz::FileStorage.new issue_dir
++  project = storage.load
++  op.do 'todo', project, config, []
++end
++
++# FIXME see http://github.com/jugyo/cinatra/issues/#issue/4
 +rescue => x
 +  p x
 +end
