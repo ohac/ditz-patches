@@ -1,0 +1,53 @@
+diff --git a/bin/coditz.rb b/bin/coditz.rb
+index b2e4ac3..3f1e895 100755
+--- a/bin/coditz.rb
++++ b/bin/coditz.rb
+@@ -30,7 +30,7 @@ def ditz_config_file
+   File.join(config_dir || ".", CONFIG_FN)
+ end
+ 
+-def ditz_op(cmd, opts = [])
++def ditz_op(cmd, opts = [], project = nil)
+   config_file = ditz_config_file
+   unless File.exist?(config_file)
+     puts 'do init first.'
+@@ -45,12 +45,11 @@ def ditz_op(cmd, opts = [])
+     return
+   end
+   storage = Ditz::FileStorage.new issue_dir
+-  project = storage.load
++  project = storage.load if project.nil?
+   op = Ditz::Operator.new
+-  op.do cmd, project, config, opts
+-  changed_issues = project.issues.select { |i| i.changed? }
+-  changed_not_added_issues = changed_issues - project.added_issues
++  op.do cmd, project, config, opts.clone
+   storage.save project
++  project
+ end
+ 
+ def get_name_from_mercurial
+diff --git a/lib/ditz/file-storage.rb b/lib/ditz/file-storage.rb
+index 9340f1d..019befa 100644
+--- a/lib/ditz/file-storage.rb
++++ b/lib/ditz/file-storage.rb
+@@ -26,7 +26,6 @@ class FileStorage
+   end
+ 
+   def save project
+-    dirty = false
+     dirty = project.each_modelobject { |o| break true if o.changed? }
+     if dirty
+       Ditz::debug "project is dirty, saving #{@project_fn}"
+diff --git a/lib/ditz/model.rb b/lib/ditz/model.rb
+index 0c5afed..f5226af 100644
+--- a/lib/ditz/model.rb
++++ b/lib/ditz/model.rb
+@@ -215,6 +215,7 @@ class ModelObject
+   def save! fn
+     #FileUtils.mv fn, "#{fn}~", :force => true rescue nil
+     File.open(fn, "w") { |f| f.puts to_yaml }
++    unchanged!
+     self
+   end
+ 
