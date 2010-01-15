@@ -1,0 +1,18 @@
+diff --git a/bin/coditz.rb b/bin/coditz.rb
+index 3f1e895..b5df82c 100755
+--- a/bin/coditz.rb
++++ b/bin/coditz.rb
+@@ -112,6 +112,13 @@ command 'add' do |arg|
+   ditz_op 'add', ['-q', arg]
+ end
+ 
++command 'bench' do |arg|
++  prj = nil
++  10000.times do |i|
++    prj = ditz_op 'add', ['-q', "foo#{i}"], prj
++  end
++end
++
+ command 'close' do |arg|
+   ditz_op 'close', ['-n', arg] # TODO select 1,2,3
+ end
