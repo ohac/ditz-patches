@@ -6,3 +6,4 @@ performance.patch
 nointerpolated.patch
 bench.patch
 ohacgem.patch
+sinatra.patch

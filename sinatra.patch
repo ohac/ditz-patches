@@ -1,0 +1,77 @@
+diff --git a/bin/ditzweb b/bin/ditzweb
+new file mode 100755
+index 0000000..fe4625a
+--- /dev/null
++++ b/bin/ditzweb
+@@ -0,0 +1,71 @@
++#!/usr/bin/env ruby
++# -*- coding: utf-8 -*-
++
++self_file =
++    if File.symlink?(__FILE__)
++      require 'pathname'
++      Pathname.new(__FILE__).realpath
++    else
++      __FILE__
++    end
++$:.unshift(File.dirname(self_file) + "/../lib")
++
++require 'rubygems'
++require 'ditz'
++require 'sinatra'
++
++set :sessions, true
++set :root, File.dirname(self_file) + "/../lib"
++
++CONFIG_FN = ".ditz-config"
++
++def ditz_config_file
++  config_dir = Ditz::find_dir_containing CONFIG_FN
++  File.join(config_dir || ".", CONFIG_FN)
++end
++
++def ditz_get_storage
++  config_file = ditz_config_file
++  config = Ditz::Config.from config_file
++  config.use_editor_if_possible = false # overwrite
++  config.paginate = "never" # overwrite
++  issue_dir = Pathname.new(config.issue_dir)
++  Ditz::FileStorage.new issue_dir
++end
++
++CONTENT_TYPES = {:html => 'text/html', :css => 'text/css',
++    :js => 'application/javascript'}
++
++before do
++ request_uri = case request.env['REQUEST_URI']
++   when /\.css$/; :css
++   when /\.js$/; :js
++   else :html
++ end
++ content_type CONTENT_TYPES[request_uri], :charset => 'utf-8'
++end
++
++get '/' do
++  storage = ditz_get_storage
++  project = storage.load
++  releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
++    h[r] = {
++      :title => r == :unassigned ? "Unassigned:" : "#{r.name} (#{r.status}):",
++      :issues => project.issues_for_release(r).sort_by { |i| i.sort_order }
++    }
++    h
++  end
++  haml :index, :locals => { :releases => releases }
++end
++
++# lib/ditz/operator.rb
++# lib/ditz/model.rb
++# lib/ditz/model-objects.rb
++# lib/ditz/file-storage.rb
++# lib/views/index.haml
++# lib/views/show.haml
++get '/i/*' do |arg|
++  fn = File.join '.ditz', "issue-#{arg}*.yaml"
++  issues = Dir[fn].map { |fn| Ditz::Issue.from fn }
++  haml :show, :locals => { :issues => issues }
++end
