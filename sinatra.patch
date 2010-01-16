@@ -309,57 +309,86 @@ index 0000000..0a59d3a
 +}
 diff --git a/lib/views/index.haml b/lib/views/index.haml
 new file mode 100644
-index 0000000..98347bf
+index 0000000..a6250c1
 --- /dev/null
 +++ b/lib/views/index.haml
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,16 @@
 +%html
 +  %head
-+    %title Sinatra Template
-+    %link{:href => "/styles.css", :rel => "stylesheet", :type => "text/css",
++    %title Issue Tracker
++    %link{:href => "/style.css", :rel => "stylesheet", :type => "text/css",
 +        :media => "screen"}
 +  %body
-+    index
-+    %ul
-+      - releases.each do |key,release|
-+        %li= release[:title]
-+        %ul
-+          - release[:issues].each do |issue|
-+            %li
-+              %a{:href => "/i/#{issue.id}"}== #{issue.title}
++    .main
++      %h1 Issue Tracker
++      %ul
++        - releases.each do |key,release|
++          %h2= release[:title]
++          %ul
++            - release[:issues].each do |issue|
++              %li
++                %a{:href => "/i/#{issue.id}"}== #{issue.title}
++    .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
 diff --git a/lib/views/show.haml b/lib/views/show.haml
 new file mode 100644
-index 0000000..308d14d
+index 0000000..98714b5
 --- /dev/null
 +++ b/lib/views/show.haml
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,57 @@
 +%html
 +  %head
-+    %title Sinatra Template
-+    %link{:href => "/styles.css", :rel => "stylesheet", :type => "text/css",
-+        :media => "screen"}
++    %title= issues.first.title
++    %link{:href => "/style.css", :rel => "stylesheet", :type => "text/css",
++        :media => "all"}
 +  %body
-+    show
-+    %ul
++    .main
 +      - issues.each do |issue|
-+        %li= issue.id
-+        %li= issue.name
-+        %li= issue.pathname
-+        %li= issue.project
-+        %li= issue.title
-+        %li= issue.desc
-+        %li= issue.type
-+        %li= issue.component
-+        %li= issue.release
-+        %li= issue.reporter
-+        %li= issue.status
-+        %li= issue.disposition
-+        %li= issue.creation_time
-+        %li= issue.references
-+        %ul
-+          - issue.log_events.each do |log_event|
-+            - time, who, what, comment = log_event
-+            %li= time
-+            %li= who
-+            %li= what
-+            %li= comment
++        %h1= issue.title
++        .backptr
++          %a{:href => '/'} &laquo; top page
++        .description
++          %p= issue.desc
++        %h2 Details
++        %table
++          %tbody
++            %tr
++              %td.attrname Id:
++              %td.attrval= issue.id
++            %tr
++              %td.attrname Type:
++              %td.attrval= issue.type
++            %tr
++              %td.attrname Creation time:
++              %td.attrval= issue.creation_time
++            %tr
++              %td.attrname Creator:
++              %td.attrval= issue.reporter
++            %tr
++              %td.attrname Release:
++              %td.attrval= issue.release
++            %tr
++              %td.attrname Component:
++              %td.attrval= issue.component
++            %tr
++              %td.attrname Status:
++              %td.attrval= issue.status
++            %tr
++              %td.attrname Disposition:
++              %td.attrval= issue.disposition
++            %tr
++              %td.attrname References:
++              %td.attrval
++                - issue.references.each do |ref|
++                  %li
++                    %a{:href => ref}= ref
++        %h2 Issue log
++        %table.log
++          %tbody
++            - issue.log_events.each_with_index do |log_event, i|
++              - time, who, what, comment = log_event
++              %tr{:class => i.odd? ? 'odd-row' : 'even-row'}
++                %td.date= time
++                %td.person= who
++                %td.logwhat= what
++                %td.message= comment
++    .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
