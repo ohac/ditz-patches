@@ -1,0 +1,247 @@
+diff --git a/Changelog b/Changelog
+index 642a560..b05c0d7 100644
+--- a/Changelog
++++ b/Changelog
+@@ -1,3 +1,29 @@
++== ohac-ditz 0.5.2 / 2010-01-16
++* add ditz shell (bin/coditz.rb)
++* performance hack (disabled issue name interpolation)
++* performance hack (call unchanged! when save)
++* performance hack (remove unnecessary code)
++* support ruby1.9.1
++* hide warnings: unknown field
++* add sheila (sheila/sheila.rb)
++* sheila: remove git dependency
++* sheila: add contrib/bookmarklet.js to clip web page quickly
++* sheila: show gravatar icon
++* sheila: show reference link
++* sheila: add private mode to fill form quickly
++* fix: handling nil and false
++* make more API friendly: use Trollop explicitly
++* add --quick option to add command
++* add --release option to add command
++* add --component option to add command
++* encoding: use yaml_waml library to handle UTF-8 string in YAML
++* new plugin: issue-timetracker
++* new plugin: icalendar
++* new plugin: mercurial
++* new plugin: sha-names
++* new command: rdf (baetle file support)
++* new command: list
++* fix some bugs (see git log)
+ == 0.5 / 2008-08-20
+ * ditz tarball now installable without requiring rubygems
+ * commands now take their own arguments. use 'ditz help' to see them.
+diff --git a/Manifest.txt b/Manifest.txt
+index b5e9b6c..f7689bb 100644
+--- a/Manifest.txt
++++ b/Manifest.txt
+@@ -39,3 +39,9 @@ share/ditz/red-check.png
+ share/ditz/yellow-bar.png
+ man/man1/ditz.1
+ setup.rb
++bin/coditz.rb
++contrib/bookmarklet.js
++lib/ditz/plugins/icalendar.rb
++lib/ditz/plugins/mercurial.rb
++lib/ditz/plugins/sha-names.rb
++sheila/sheila.rb
+diff --git a/PLUGINS.txt b/PLUGINS.txt
+index ac86482..a495ab6 100644
+--- a/PLUGINS.txt
++++ b/PLUGINS.txt
+@@ -25,8 +25,12 @@ shipped plugins:
+ 
+ 1. git
+ 2. git-sync
+-3. issue-claiming
+-4. issue-labeling
++3. icalendar
++4. issue-claiming
++5. issue-labeling
++6. issue-timetracker
++7. mercurial
++8. sha-names
+ 
+ git
+ ---
+@@ -100,6 +104,24 @@ Usage:
+   2. run 'ditz reconfigure' and answer its questions
+   3. run 'ditz sync' with abandon
+ 
++icalendar
++---------
++
++This plugin adds ability to export full todo list in iCalendar (RFC 2445) format. 
++It is useful for integration with different pim software like KOrganizer.
++
++Issues are converted to VTODO entries with completion status set to 50 if
++its state is :in_progress, 100 if it's closed and 0 otherwise.
++Progress for release is 100 if it's released otherwise it's 99 * closed/all 
++issues. So maximum for active release is 99 and it's not shown as done until 
++released.
++
++Commands added:
++  ditz todo-ics: generate full todo list in iCalendar format
++
++Usage: 
++  1. add a line "- icalendar" to the .ditz-plugins file in the project root
++
+ issue-claiming
+ --------------
+ 
+@@ -109,7 +131,7 @@ issue before starting to work on it, and you can let people know what
+ you're working on.
+ 
+ Commands added:
+-  ditz claim: claim an issue for yourself
++  ditz claim: claim an issue for yourself or a dev specified in project.yaml
+   ditz unclaim: unclaim a claimed issue
+   ditz mine: show all issues claimed by you
+   ditz claimed: show all claimed issues, by developer
+@@ -118,7 +140,10 @@ Commands added:
+ Usage:
+   1. add a line "- issue-claiming" to the .ditz-plugins file in the project
+      root
+-  2. use the above commands to abandon
++  2. (optional:) add a 'devs' key to project.yaml, e.g:
++devs: 
++  :roy: Roy Baty <roy@marsproject.com>
++  :pris: Pris Stratton <pris@marsproject.com>
+ 
+ issue-labeling
+ --------------
+@@ -138,3 +163,35 @@ Usage:
+      root
+   2. use the above commands to abandon
+ 
++issue-timetracker
++-----------------
++
++module Ditz
++
++mercurial
++---------
++
++require 'time'
++
++sha-names
++---------
++
++This world's-smallest-ditz-plugin uses the initial 5 characters of
++the SHA id instead of an identifier like "ditz-999".  Installing
++this plugin will cause all references of the form 'ditz-123' and
++'engine-57' to change to '1a2bc', 'f33d0' and similarly memorable
++IDs.  If you are comfortable working with them (your clients may
++not be...)  these make all issue IDs unique across the project, so
++long as you do not get a collision between two 5-hex-char IDs.
++
++Without this plugin, the standard ID for an issue will be of the
++form 'design-123'. Whilst this is easier to remember, it is also
++liable to change - for example, if two ditz trees are merged
++together, or if an issue is re-assigned from one component to
++another. This plugin provides a canonical, immutable ID from the
++time of issue creation.
++
++Usage: 
++  1. add a line "- sha-names" to the .ditz-plugins file in the
++  project root
++
+diff --git a/Rakefile b/Rakefile
+index 57ebb86..a1c79d6 100644
+--- a/Rakefile
++++ b/Rakefile
+@@ -8,15 +8,15 @@ class Hoe
+   def extra_dev_deps; @extra_dev_deps.reject { |x| x[0] == "hoe" } end
+ end
+ 
+-Hoe.new('ditz', Ditz::VERSION) do |p|
++Hoe.new('ohac-ditz', Ditz::VERSION) do |p|
+   p.rubyforge_name = 'ditz'
+-  p.author = "William Morgan"
++  p.author = "OHASHI Hideya"
+   p.summary = "A simple issue tracker designed to integrate well with distributed version control systems like git and darcs. State is saved to a YAML file kept under version control, allowing issues to be closed/added/modified as part of a commit."
+ 
+   p.description = p.paragraphs_of('README.txt', 4..11).join("\n\n").gsub(/== SYNOPSIS/, "Synopsis:")
+   p.url = "http://ditz.rubyforge.org"
+   p.changes = p.paragraphs_of('Changelog', 0..0).join("\n\n")
+-  p.email = "wmorgan-ditz@masanjin.net"
++  p.email = "ohachige@gmail.com"
+   p.extra_deps = [['trollop', '>= 1.9'], ['yaml_waml', '>= 0.3']]
+ end
+ 
+diff --git a/ReleaseNotes b/ReleaseNotes
+index dde565e..8fe0db1 100644
+--- a/ReleaseNotes
++++ b/ReleaseNotes
+@@ -1,3 +1,8 @@
++0.5.2 / ohac-ditz
++---
++
++see Changelog
++
+ 0.5
+ ---
+ 
+diff --git a/ditz.gemspec b/ditz.gemspec
+index 9c0aea9..e4d9501 100644
+--- a/ditz.gemspec
++++ b/ditz.gemspec
+@@ -1,16 +1,16 @@
+ Gem::Specification.new do |s|
+-  s.name = %q{ditz}
+-  s.version = "0.5"
++  s.name = %q{ohac-ditz}
++  s.version = "0.5.2"
+ 
+   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
+   s.authors = ["William Morgan"]
+   s.date = %q{2008-09-05}
+-  s.default_executable = %q{ditz}
++  s.default_executable = %q{ditz coditz.rb}
+   s.description = %q{Ditz is a simple, light-weight distributed issue tracker designed to work with distributed version control systems like git, darcs, Mercurial, and Bazaar. It can also be used with centralized systems like SVN.  Ditz maintains an issue database directory on disk, with files written in a line-based and human-editable format. This directory can be kept under version control, alongside project code.  Ditz provides a simple, console-based interface for creating and updating the issue database files, and some basic static HTML generation capabilities for producing world-readable status pages (for a demo, see the ditz ditz page).  Ditz includes a robust plugin system for adding commands, model fields, and modifying output. See PLUGINS.txt for documentation on the pre-shipped plugins.  Ditz currently offers no central public method of bug submission.   == USING DITZ  There are several different ways to use Ditz:  1. Treat issue change the same as code change: include it as part of commits, and merge it with changes from other developers, resolving conflicts in the usual manner. 2. Keep the issue database in the repository but in a separate branch. Issue changes can be managed by your VCS, but is not tied directly to code commits. 3. Keep the issue database separate and not under VCS at all.}
+   s.email = %q{wmorgan-ditz@masanjin.net}
+-  s.executables = ["ditz"]
++  s.executables = ["ditz coditz.rb"]
+   s.extra_rdoc_files = ["Manifest.txt", "PLUGINS.txt", "README.txt"]
+-  s.files = ["Changelog", "INSTALL", "LICENSE", "Manifest.txt", "PLUGINS.txt", "README.txt", "Rakefile", "ReleaseNotes", "bin/ditz", "contrib/completion/_ditz.zsh", "contrib/completion/ditz.bash", "lib/ditz.rb", "lib/ditz/file-storage.rb", "lib/ditz/hook.rb", "lib/ditz/html.rb", "lib/ditz/lowline.rb", "lib/ditz/model-objects.rb", "lib/ditz/model.rb", "lib/ditz/operator.rb", "lib/ditz/plugins/git-sync.rb", "lib/ditz/plugins/git.rb", "lib/ditz/plugins/issue-claiming.rb", "lib/ditz/plugins/issue-labeling.rb", "lib/ditz/util.rb", "lib/ditz/view.rb", "lib/ditz/views.rb", "share/ditz/index.rhtml", "share/ditz/issue.rhtml", "share/ditz/issue_table.rhtml", "share/ditz/release.rhtml", "share/ditz/unassigned.rhtml", "share/ditz/component.rhtml", "share/ditz/style.css", "share/ditz/blue-check.png", "share/ditz/green-bar.png", "share/ditz/green-check.png", "share/ditz/red-check.png", "share/ditz/yellow-bar.png", "man/man1/ditz.1", "setup.rb"]
++  s.files = ["Changelog", "INSTALL", "LICENSE", "Manifest.txt", "PLUGINS.txt", "README.txt", "Rakefile", "ReleaseNotes", "bin/ditz", "contrib/completion/_ditz.zsh", "contrib/completion/ditz.bash", "lib/ditz.rb", "lib/ditz/file-storage.rb", "lib/ditz/hook.rb", "lib/ditz/html.rb", "lib/ditz/lowline.rb", "lib/ditz/model-objects.rb", "lib/ditz/model.rb", "lib/ditz/operator.rb", "lib/ditz/plugins/git-sync.rb", "lib/ditz/plugins/git.rb", "lib/ditz/plugins/issue-claiming.rb", "lib/ditz/plugins/issue-labeling.rb", "lib/ditz/util.rb", "lib/ditz/view.rb", "lib/ditz/views.rb", "share/ditz/index.rhtml", "share/ditz/issue.rhtml", "share/ditz/issue_table.rhtml", "share/ditz/release.rhtml", "share/ditz/unassigned.rhtml", "share/ditz/component.rhtml", "share/ditz/style.css", "share/ditz/blue-check.png", "share/ditz/green-bar.png", "share/ditz/green-check.png", "share/ditz/red-check.png", "share/ditz/yellow-bar.png", "man/man1/ditz.1", "setup.rb", "bin/coditz.rb" , "contrib/bookmarklet.js" , "lib/ditz/plugins/icalendar.rb" , "lib/ditz/plugins/mercurial.rb" , "lib/ditz/plugins/sha-names.rb" , "sheila/sheila.rb"]
+   s.has_rdoc = true
+   s.homepage = %q{http://ditz.rubyforge.org}
+   s.rdoc_options = ["--main", "README.txt"]
+diff --git a/lib/ditz.rb b/lib/ditz.rb
+index 3248931..62fca56 100644
+--- a/lib/ditz.rb
++++ b/lib/ditz.rb
+@@ -3,7 +3,7 @@ require 'trollop'
+ 
+ module Ditz
+ 
+-VERSION = "0.5"
++VERSION = "0.5.2"
+ attr_accessor :verbose
+ module_function :verbose, :verbose=
+ 
+diff --git a/man/man1/ditz.1 b/man/man1/ditz.1
+index df82276..c2c8812 100644
+--- a/man/man1/ditz.1
++++ b/man/man1/ditz.1
+@@ -1,4 +1,4 @@
+-.TH "ditz" "1" "0.5" "" ""
++.TH "ditz" "1" "0.5.2" "" ""
+ .SH "NAME"
+ ditz \- simple, light\-weight distributed issue tracker
+ .SH "SYNOPSIS"
+diff --git a/release-script.txt b/release-script.txt
+index aa891d1..f2b6426 100644
+--- a/release-script.txt
++++ b/release-script.txt
+@@ -7,7 +7,7 @@ mv tmp.txt Changelog
+ vi Changelog    # and cleanup
+ vi ReleaseNotes # and add whatever's necessary
+ vi lib/ditz.rb  # and bump version number
+-vi man/ditz.1   # and bump version number
++vi man/man1/ditz.1 # and bump version number
+ rake release VERSION=<releasename>
+ git commit -a -v
+ git tag -a release-<releasename> -m "release <releasename>"
