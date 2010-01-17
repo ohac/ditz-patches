@@ -1,14 +1,47 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..de387e0 100755
+index fe4625a..b572a42 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
-@@ -58,14 +58,33 @@ get '/' do
+@@ -30,7 +30,7 @@ def ditz_get_storage
+   config.use_editor_if_possible = false # overwrite
+   config.paginate = "never" # overwrite
+   issue_dir = Pathname.new(config.issue_dir)
+-  Ditz::FileStorage.new issue_dir
++  [config, Ditz::FileStorage.new(issue_dir)]
+ end
+ 
+ CONTENT_TYPES = {:html => 'text/html', :css => 'text/css',
+@@ -46,7 +46,7 @@ before do
+ end
+ 
+ get '/' do
+-  storage = ditz_get_storage
++  config, storage = ditz_get_storage
+   project = storage.load
+   releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
+     h[r] = {
+@@ -58,14 +58,56 @@ get '/' do
    haml :index, :locals => { :releases => releases }
  end
  
++get '/i/new' do
++  config, storage = ditz_get_storage
++  project = storage.load
++  releases = project.releases
++  components = project.components
++  haml :new, :locals => { :releases => releases, :components => components }
++end
++
 +get '/i/*' do |arg|
 +  fn = File.join '.ditz', "issue-#{arg}*.yaml"
 +  issues = Dir[fn].map { |fn| Ditz::Issue.from fn }
++  haml :show, :locals => { :issues => issues }
++end
++
++put '/i/*' do |arg|
++  fn = File.join '.ditz', "issue-#{arg}*.yaml"
++  issues = Dir[fn].map { |fn| Ditz::Issue.from fn }
++  # TODO
 +  haml :show, :locals => { :issues => issues }
 +end
 +
@@ -23,38 +56,84 @@ index fe4625a..de387e0 100755
 -  issues = Dir[fn].map { |fn| Ditz::Issue.from fn }
 -  haml :show, :locals => { :issues => issues }
 +# lib/views/new.haml
-+get '/new' do
-+  storage = ditz_get_storage
++post '/i/?' do
++  config, storage = ditz_get_storage
 +  project = storage.load
-+  releases = project.releases
-+  components = project.components
-+  haml :new, :locals => { :releases => releases, :components => components }
-+end
-+
-+post '/' do
-+  p params[:summary]
-+  p params[:details]
-+  p params[:reference]
-+  p params[:type]
-+  p params[:release]
-+  p params[:component]
++  user = params[:user] 
++  user = config.user if user.nil? || user.size == 0
++  summary = params[:summary]
++  details = params[:details] || ''
++  reference = params[:reference]
++  type = (params[:type] || :bugfix).to_sym
++  component = params[:component] ||  project.components.first.name
++  release = params[:release]
++  release = (project.releases.first.name rescue nil) if release.nil? || release.size == 0
++  issue = Ditz::Issue.create_interactively(:args => [config, project], :with => {
++      :title => summary, :desc => details, :type => type,
++      :component => component, :reporter => user, :release => release})
++  issue.changed!
++  project.add_issue issue
++  issue.log "created", user, ''
++  if reference && reference.size > 0
++    issue.add_reference reference
++    issue.log "added reference #{issue.references.size}", user, ''
++  end
++  storage.save project
 +  redirect '/'
  end
+diff --git a/contrib/tombloo_ditz.js b/contrib/tombloo_ditz.js
+new file mode 100644
+index 0000000..059e1f0
+--- /dev/null
++++ b/contrib/tombloo_ditz.js
+@@ -0,0 +1,32 @@
++// ../../extensions/
++models.register({
++	name : 'Ditz',
++	ICON : 'chrome://tombloo/skin/item.ico',
++	check : function(ps){
++		return (/(regular|photo|quote|link|conversation|video)/).test(ps.type) && !ps.file;
++	},
++	
++	getToken : function(){
++		return getCookieString('localhost', 'AT').split('=').pop();
++	},
++	
++	post : function(ps){
++		var self = this;
++		return request('http://localhost:4567/i/', {
++			redirectionLimit : 0,
++			sendContent : {
++//			at      : self.getToken(),
++//				tags       : joinText(ps.tags, ','),
++//				local      : this.getLocalTimestamp(),
++//				private    : ps.private? 1 : 0,
++				summary : ps.page,
++				details : joinText([ps.body, ps.description], ' ', true),
++				reference : ps.pageUrl,
++				image0  : ps.type == 'photo' ? ps.itemUrl : '',
++//      type : '',
++//      release : '',
++//      component : '',
++			},
++		});
++	},
++});
 diff --git a/lib/views/index.haml b/lib/views/index.haml
-index a6250c1..3d6581f 100644
+index a6250c1..a9c48b0 100644
 --- a/lib/views/index.haml
 +++ b/lib/views/index.haml
 @@ -6,6 +6,7 @@
    %body
      .main
        %h1 Issue Tracker
-+      %a{:href => "/new"} Add a new issue
++      %a{:href => "/i/new"} Add a new issue
        %ul
          - releases.each do |key,release|
            %h2= release[:title]
 diff --git a/lib/views/new.haml b/lib/views/new.haml
 new file mode 100644
-index 0000000..bf060bb
+index 0000000..ba9df31
 --- /dev/null
 +++ b/lib/views/new.haml
 @@ -0,0 +1,38 @@
@@ -70,7 +149,7 @@ index 0000000..bf060bb
 +      %h1 Add a new issue
 +      .backptr
 +        %a{:href => '/'} &laquo; top page
-+      %form{:action => '/', :method => 'post'}
++      %form{:action => '/i', :method => 'post'}
 +        %p Summary
 +        %input{:type => 'text', :name => 'summary', :size => 80}
 +        %p Details
