@@ -1,5 +1,5 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..895d6b0 100755
+index fe4625a..ba98481 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
 @@ -13,6 +13,8 @@ $:.unshift(File.dirname(self_file) + "/../lib")
@@ -47,7 +47,7 @@ index fe4625a..895d6b0 100755
    project = storage.load
    releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
      h[r] = {
-@@ -55,17 +70,129 @@ get '/' do
+@@ -55,17 +70,137 @@ get '/' do
      }
      h
    end
@@ -181,6 +181,14 @@ index fe4625a..895d6b0 100755
 +  end
 +  storage.save project
 +  redirect "/i/#{issue.id}"
++end
++
++get '/repo/?' do
++  # TODO git support
++  puts `hg addremove`
++  puts `hg ci -m save`
++  puts `hg push`
++  redirect '/'
  end
 diff --git a/contrib/tombloo_ditz.js b/contrib/tombloo_ditz.js
 new file mode 100644
@@ -424,10 +432,10 @@ literal 0
 HcmV?d00001
 
 diff --git a/lib/views/index.haml b/lib/views/index.haml
-index a6250c1..be8e340 100644
+index a6250c1..5a6ad3b 100644
 --- a/lib/views/index.haml
 +++ b/lib/views/index.haml
-@@ -1,16 +1,42 @@
+@@ -1,16 +1,43 @@
  %html
    %head
 -    %title Issue Tracker
@@ -445,7 +453,6 @@ index a6250c1..be8e340 100644
 +      %a{:href => "/i/new"} Add a new issue
 +      %br
 +      %a{:href => "/i"} All issues
-+      %br
 +      %form{:action => '/i', :method => :get}
 +        %select{:name => :r}
 +          %option{:value => '*', :selected => true} All
@@ -460,6 +467,8 @@ index a6250c1..be8e340 100644
 +        %input#ignorecase{:type => :checkbox, :name => :i, :checked => true}
 +        %label{:for => :ignorecase} Ignore case
 +        %input{:type => :submit, :value => 'Search'}
++      %form{:action => '/repo', :method => :get}
++        %input{:type => :submit, :value => 'hg addremove ; hg commit -m save ; hg push'}
 +      %a{:href => "javascript:var%20d=document,w=window,e=w.getSelection,k=d.getSelection,x=d.selection,s=(e?e():(k)?k():(x?x.createRange().text:0)),f='http://localhost:4567/i/new',l=d.location,e=encodeURIComponent,p='?u='+e(l.href)+'&t='+e(d.title)+'&s='+e(s),u=f+p;l.href=u;"} Bookmarklet
 +      - releases.each do |key,release|
 +        %h2= h release[:title]
@@ -470,9 +479,9 @@ index a6250c1..be8e340 100644
 -                %a{:href => "/i/#{issue.id}"}== #{issue.title}
 +              %tr
 +                %td
-+                  - icon = {'fixed' => '/green-check.png', 'wontfix' => '/red-check.png'}
++                  - icon = {:fixed => '/green-check.png', :wontfix => '/red-check.png'}
 +                  - if issue.status == :closed
-+                    %img{:src => icon[issue.disposition_string]}
++                    %img{:src => icon[issue.disposition]}
 +                %td.littledate= issue.creation_time.pretty_date
 +                %td.issuename
 +                  %img{:src => gravatar(issue.reporter)}
@@ -480,10 +489,10 @@ index a6250c1..be8e340 100644
      .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
 diff --git a/lib/views/issues.haml b/lib/views/issues.haml
 new file mode 100644
-index 0000000..407fe06
+index 0000000..b660f23
 --- /dev/null
 +++ b/lib/views/issues.haml
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,38 @@
 +%html
 +  %head
 +    %title== #{h project.name} Issue Tracker
@@ -492,15 +501,31 @@ index 0000000..407fe06
 +  %body
 +    .main
 +      %h1== #{h project.name} Issue Tracker
++      .backptr
++        %a{:href => '/'} &laquo; top page
 +      %a{:href => "/i/new"} Add a new issue
++      %form{:action => '/i', :method => :get}
++        %select{:name => :r}
++          %option{:value => '*', :selected => true} All
++          %option{:value => '', :selected => false} No release
++          - project.releases.each do |r|
++            %option{:value => r.name, :selected => false}= r.name
++        %select{:name => :c}
++          %option{:value => '*', :selected => true} All
++          - project.components.each do |c|
++            %option{:value => c.name, :selected => false}= c.name
++        %input{:type => :text, :name => :q}
++        %input#ignorecase{:type => :checkbox, :name => :i, :checked => true}
++        %label{:for => :ignorecase} Ignore case
++        %input{:type => :submit, :value => 'Search'}
 +      %table
 +        %tbody
 +          - issues.each do |issue|
 +            %tr
 +              %td
-+                - icon = {'fixed' => '/green-check.png', 'wontfix' => '/red-check.png'}
++                - icon = {:fixed => '/green-check.png', :wontfix => '/red-check.png'}
 +                - if issue.status == :closed
-+                  %img{:src => icon[issue.disposition_string]}
++                  %img{:src => icon[issue.disposition]}
 +              %td.littledate= issue.creation_time.pretty_date
 +              %td.issuename
 +                %img{:src => gravatar(issue.reporter)}
