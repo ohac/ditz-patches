@@ -1,16 +1,17 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..bf5f20b 100755
+index fe4625a..895d6b0 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
-@@ -13,6 +13,7 @@ $:.unshift(File.dirname(self_file) + "/../lib")
+@@ -13,6 +13,8 @@ $:.unshift(File.dirname(self_file) + "/../lib")
  require 'rubygems'
  require 'ditz'
  require 'sinatra'
++require 'haml'
 +require 'digest'
  
  set :sessions, true
  set :root, File.dirname(self_file) + "/../lib"
-@@ -30,12 +31,25 @@ def ditz_get_storage
+@@ -30,12 +32,25 @@ def ditz_get_storage
    config.use_editor_if_possible = false # overwrite
    config.paginate = "never" # overwrite
    issue_dir = Pathname.new(config.issue_dir)
@@ -37,7 +38,7 @@ index fe4625a..bf5f20b 100755
  before do
   request_uri = case request.env['REQUEST_URI']
     when /\.css$/; :css
-@@ -46,7 +60,7 @@ before do
+@@ -46,7 +61,7 @@ before do
  end
  
  get '/' do
@@ -46,12 +47,36 @@ index fe4625a..bf5f20b 100755
    project = storage.load
    releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
      h[r] = {
-@@ -55,17 +69,105 @@ get '/' do
+@@ -55,17 +70,129 @@ get '/' do
      }
      h
    end
 -  haml :index, :locals => { :releases => releases }
 +  haml :index, :locals => { :project => project, :releases => releases }
++end
++
++get '/i/?' do
++  config, storage = ditz_get_storage
++  project = storage.load
++  issues = project.issues
++  component = params[:c]
++  issues = issues.select { |i| i.component == component } if component != '*'
++  release = params[:r]
++  if release != '*'
++    release = nil if release.size == 0
++    issues = issues.select { |i| i.release == release }
++  end
++  query = params[:q]
++  if query
++    ignore_case = params[:i]
++    ignore_case = ignore_case.nil? ? false : ignore_case == 'on'
++    re = Regexp.new query, ignore_case
++    issues = issues.select do |i|
++      i.title =~ re || i.desc =~ re ||
++        i.log_events.map { |time, who, what, comments| comments }.join(" ") =~ re
++    end
++  end
++  haml :issues, :locals => { :project => project, :issues => issues }
 +end
 +
 +get '/i/new' do
@@ -399,10 +424,10 @@ literal 0
 HcmV?d00001
 
 diff --git a/lib/views/index.haml b/lib/views/index.haml
-index a6250c1..c81623f 100644
+index a6250c1..be8e340 100644
 --- a/lib/views/index.haml
 +++ b/lib/views/index.haml
-@@ -1,16 +1,26 @@
+@@ -1,16 +1,42 @@
  %html
    %head
 -    %title Issue Tracker
@@ -419,6 +444,22 @@ index a6250c1..c81623f 100644
 +      %h1== #{h project.name} Issue Tracker
 +      %a{:href => "/i/new"} Add a new issue
 +      %br
++      %a{:href => "/i"} All issues
++      %br
++      %form{:action => '/i', :method => :get}
++        %select{:name => :r}
++          %option{:value => '*', :selected => true} All
++          %option{:value => '', :selected => false} No release
++          - project.releases.each do |r|
++            %option{:value => r.name, :selected => false}= r.name
++        %select{:name => :c}
++          %option{:value => '*', :selected => true} All
++          - project.components.each do |c|
++            %option{:value => c.name, :selected => false}= c.name
++        %input{:type => :text, :name => :q}
++        %input#ignorecase{:type => :checkbox, :name => :i, :checked => true}
++        %label{:for => :ignorecase} Ignore case
++        %input{:type => :submit, :value => 'Search'}
 +      %a{:href => "javascript:var%20d=document,w=window,e=w.getSelection,k=d.getSelection,x=d.selection,s=(e?e():(k)?k():(x?x.createRange().text:0)),f='http://localhost:4567/i/new',l=d.location,e=encodeURIComponent,p='?u='+e(l.href)+'&t='+e(d.title)+'&s='+e(s),u=f+p;l.href=u;"} Bookmarklet
 +      - releases.each do |key,release|
 +        %h2= h release[:title]
@@ -437,14 +478,40 @@ index a6250c1..c81623f 100644
 +                  %img{:src => gravatar(issue.reporter)}
 +                  %a{:href => "/i/#{issue.id}"}== #{h issue.title}
      .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
+diff --git a/lib/views/issues.haml b/lib/views/issues.haml
+new file mode 100644
+index 0000000..407fe06
+--- /dev/null
++++ b/lib/views/issues.haml
+@@ -0,0 +1,22 @@
++%html
++  %head
++    %title== #{h project.name} Issue Tracker
++    %link{:href => "/style.css", :rel => "stylesheet", :type => "text/css",
++        :media => "screen"}
++  %body
++    .main
++      %h1== #{h project.name} Issue Tracker
++      %a{:href => "/i/new"} Add a new issue
++      %table
++        %tbody
++          - issues.each do |issue|
++            %tr
++              %td
++                - icon = {'fixed' => '/green-check.png', 'wontfix' => '/red-check.png'}
++                - if issue.status == :closed
++                  %img{:src => icon[issue.disposition_string]}
++              %td.littledate= issue.creation_time.pretty_date
++              %td.issuename
++                %img{:src => gravatar(issue.reporter)}
++                %a{:href => "/i/#{issue.id}"}== #{h issue.title}
++    .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
 diff --git a/lib/views/new.haml b/lib/views/new.haml
 new file mode 100644
-index 0000000..ebdb572
+index 0000000..2c68aa5
 --- /dev/null
 +++ b/lib/views/new.haml
-@@ -0,0 +1,38 @@
-+- p releases
-+- p components
+@@ -0,0 +1,36 @@
 +%html
 +  %head
 +    %title Add a new issue
