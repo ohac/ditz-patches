@@ -1,5 +1,5 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..be11097 100755
+index fe4625a..0265b30 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
 @@ -13,6 +13,7 @@ $:.unshift(File.dirname(self_file) + "/../lib")
@@ -43,7 +43,7 @@ index fe4625a..be11097 100755
    project = storage.load
    releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
      h[r] = {
-@@ -58,14 +69,57 @@ get '/' do
+@@ -58,14 +69,74 @@ get '/' do
    haml :index, :locals => { :releases => releases }
  end
  
@@ -57,16 +57,34 @@ index fe4625a..be11097 100755
 +end
 +
 +get '/i/*' do |arg|
++  config, storage = ditz_get_storage
++  project = storage.load
++  releases = project.releases
++  components = project.components
 +  fn = File.join '.ditz', "issue-#{arg}*.yaml"
 +  issues = Dir[fn].map { |fn| Ditz::Issue.from fn }
-+  haml :show, :locals => { :issues => issues }
++  haml :show, :locals => { :issues => issues, :releases => releases,
++      :components => components }
 +end
 +
 +put '/i/*' do |arg|
-+  fn = File.join '.ditz', "issue-#{arg}*.yaml"
-+  issues = Dir[fn].map { |fn| Ditz::Issue.from fn }
-+  # TODO
-+  haml :show, :locals => { :issues => issues }
++  config, storage = ditz_get_storage
++  comment = params[:comment]
++  reference = params[:reference] # TODO
++  component = params[:component] # TODO
++  type = params[:type] # TODO
++  user = params[:user]
++  user = config.user if user.nil? || user.size == 0
++  release = params[:release] # TODO
++  if comment.size > 0
++    project = storage.load
++    fn = File.join '.ditz', "issue-#{arg}.yaml"
++    issue = Ditz::Issue.from fn
++    issue.log "commented", user, comment
++    project.add_issue issue
++    storage.save project
++  end
++  redirect "/i/#{arg}"
 +end
 +
  # lib/ditz/operator.rb
@@ -95,7 +113,6 @@ index fe4625a..be11097 100755
 +  issue = Ditz::Issue.create_interactively(:args => [config, project], :with => {
 +      :title => summary, :desc => details, :type => type,
 +      :component => component, :reporter => user, :release => release})
-+  issue.changed!
 +  project.add_issue issue
 +  issue.log "created", user, ''
 +  if reference && reference.size > 0
@@ -210,7 +227,7 @@ index 0000000..ebdb572
 +          %input{:type => 'submit', :value => 'Submit issue'}
 +    .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
 diff --git a/lib/views/show.haml b/lib/views/show.haml
-index 98714b5..db3a084 100644
+index 98714b5..761f97b 100644
 --- a/lib/views/show.haml
 +++ b/lib/views/show.haml
 @@ -1,16 +1,16 @@
@@ -244,16 +261,18 @@ index 98714b5..db3a084 100644
              %tr
                %td.attrname Release:
                %td.attrval= issue.release
-@@ -43,7 +45,7 @@
+@@ -42,8 +44,8 @@
+               %td.attrname References:
                %td.attrval
                  - issue.references.each do |ref|
-                   %li
+-                  %li
 -                    %a{:href => ref}= ref
-+                    %a{:href => ref}= h ref
++                  %a{:href => ref}= h ref
++                  %br
          %h2 Issue log
          %table.log
            %tbody
-@@ -51,7 +53,9 @@
+@@ -51,7 +53,33 @@
                - time, who, what, comment = log_event
                %tr{:class => i.odd? ? 'odd-row' : 'even-row'}
                  %td.date= time
@@ -263,6 +282,30 @@ index 98714b5..db3a084 100644
 +                  = who
                  %td.logwhat= what
                  %td.message= comment
++        %form{:action => "/i/#{issue.id}", :method => 'post'}
++          %input{:type => 'hidden', :name => '_method', :value => 'put'}
++          %p Comment
++          %textarea{:name => 'comment', :rows => 12, :cols => 80}
++          %p Reference
++          %input{:type => 'text', :name => 'reference', :size => 80}
++          %p Your name &amp; email
++          %input{:type => 'text', :name => 'user'}
++          %p Issue type
++          - [:bugfix, :feature, :task].each do |t|
++            %input{:type => 'radio', :id => t, :name => 'type', :value => t,
++                :checked => t == :bugfix}
++            %label{:for => t}= t
++          %p Release, if any
++          %select{:name => 'release'}
++            %option{:value => '', :selected => true} No release
++            - releases.each do |r|
++              %option{:value => r.name, :selected => false}= r.name
++          %p Component
++          %select{:name => 'component'}
++            - components.each_with_index do |c, i|
++              %option{:value => c.name, :selected => i == 0}= c.name
++          %p
++            %input{:type => 'submit', :value => 'Submit issue'}
      .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
 diff --git a/sheila/sheila.rb b/sheila/sheila.rb
 index 8e40f34..6d525fb 100644
