@@ -1,5 +1,5 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..ba98481 100755
+index fe4625a..a0e0348 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
 @@ -13,6 +13,8 @@ $:.unshift(File.dirname(self_file) + "/../lib")
@@ -38,7 +38,7 @@ index fe4625a..ba98481 100755
  before do
   request_uri = case request.env['REQUEST_URI']
     when /\.css$/; :css
-@@ -46,7 +61,7 @@ before do
+@@ -46,26 +61,148 @@ before do
  end
  
  get '/' do
@@ -47,7 +47,10 @@ index fe4625a..ba98481 100755
    project = storage.load
    releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
      h[r] = {
-@@ -55,17 +70,137 @@ get '/' do
+       :title => r == :unassigned ? "Unassigned:" : "#{r.name} (#{r.status}):",
+-      :issues => project.issues_for_release(r).sort_by { |i| i.sort_order }
++      :issues => project.issues_for_release(r).sort_by { |i|
++          o = i.sort_order; [o[0], -o[1].to_i] }
      }
      h
    end
@@ -76,6 +79,7 @@ index fe4625a..ba98481 100755
 +        i.log_events.map { |time, who, what, comments| comments }.join(" ") =~ re
 +    end
 +  end
++  issues = issues.sort_by { |i| o = i.sort_order; [o[0], -o[1].to_i] }
 +  haml :issues, :locals => { :project => project, :issues => issues }
 +end
 +
@@ -432,10 +436,10 @@ literal 0
 HcmV?d00001
 
 diff --git a/lib/views/index.haml b/lib/views/index.haml
-index a6250c1..5a6ad3b 100644
+index a6250c1..95bb473 100644
 --- a/lib/views/index.haml
 +++ b/lib/views/index.haml
-@@ -1,16 +1,43 @@
+@@ -1,16 +1,41 @@
  %html
    %head
 -    %title Issue Tracker
@@ -451,8 +455,6 @@ index a6250c1..5a6ad3b 100644
 -          %ul
 +      %h1== #{h project.name} Issue Tracker
 +      %a{:href => "/i/new"} Add a new issue
-+      %br
-+      %a{:href => "/i"} All issues
 +      %form{:action => '/i', :method => :get}
 +        %select{:name => :r}
 +          %option{:value => '*', :selected => true} All
