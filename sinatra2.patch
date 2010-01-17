@@ -1,8 +1,16 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..8441efe 100755
+index fe4625a..be11097 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
-@@ -30,7 +30,7 @@ def ditz_get_storage
+@@ -13,6 +13,7 @@ $:.unshift(File.dirname(self_file) + "/../lib")
+ require 'rubygems'
+ require 'ditz'
+ require 'sinatra'
++require 'digest'
+ 
+ set :sessions, true
+ set :root, File.dirname(self_file) + "/../lib"
+@@ -30,12 +31,22 @@ def ditz_get_storage
    config.use_editor_if_possible = false # overwrite
    config.paginate = "never" # overwrite
    issue_dir = Pathname.new(config.issue_dir)
@@ -11,7 +19,22 @@ index fe4625a..8441efe 100755
  end
  
  CONTENT_TYPES = {:html => 'text/html', :css => 'text/css',
-@@ -46,7 +46,7 @@ before do
+     :js => 'application/javascript'}
+ 
++helpers do
++  include Rack::Utils; alias_method :h, :escape_html
++  def gravatar(user, s = 20)
++    email = user.split.last
++    email = email[1, email.size - 2] if email[0, 1] == '<'
++    default = '&default=identicon'
++    "http://www.gravatar.com/avatar/#{Digest::MD5.hexdigest(email)}?s=#{s}#{default}"
++  end
++end
++
+ before do
+  request_uri = case request.env['REQUEST_URI']
+    when /\.css$/; :css
+@@ -46,7 +57,7 @@ before do
  end
  
  get '/' do
@@ -20,7 +43,7 @@ index fe4625a..8441efe 100755
    project = storage.load
    releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
      h[r] = {
-@@ -58,14 +58,57 @@ get '/' do
+@@ -58,14 +69,57 @@ get '/' do
    haml :index, :locals => { :releases => releases }
  end
  
@@ -121,10 +144,10 @@ index 0000000..059e1f0
 +	},
 +});
 diff --git a/lib/views/index.haml b/lib/views/index.haml
-index a6250c1..61b8d3b 100644
+index a6250c1..2c8d485 100644
 --- a/lib/views/index.haml
 +++ b/lib/views/index.haml
-@@ -6,6 +6,9 @@
+@@ -6,11 +6,15 @@
    %body
      .main
        %h1 Issue Tracker
@@ -133,7 +156,15 @@ index a6250c1..61b8d3b 100644
 +      %a{:href => "javascript:var%20d=document,w=window,e=w.getSelection,k=d.getSelection,x=d.selection,s=(e?e():(k)?k():(x?x.createRange().text:0)),f='http://localhost:4567/i/new',l=d.location,e=encodeURIComponent,p='?u='+e(l.href)+'&t='+e(d.title)+'&s='+e(s),u=f+p;l.href=u;"} Bookmarklet
        %ul
          - releases.each do |key,release|
-           %h2= release[:title]
+-          %h2= release[:title]
++          %h2= h release[:title]
+           %ul
+             - release[:issues].each do |issue|
+               %li
+-                %a{:href => "/i/#{issue.id}"}== #{issue.title}
++                %img{:src => gravatar(issue.reporter)}
++                %a{:href => "/i/#{issue.id}"}== #{h issue.title}
+     .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
 diff --git a/lib/views/new.haml b/lib/views/new.haml
 new file mode 100644
 index 0000000..ebdb572
@@ -178,3 +209,71 @@ index 0000000..ebdb572
 +        %p
 +          %input{:type => 'submit', :value => 'Submit issue'}
 +    .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
+diff --git a/lib/views/show.haml b/lib/views/show.haml
+index 98714b5..db3a084 100644
+--- a/lib/views/show.haml
++++ b/lib/views/show.haml
+@@ -1,16 +1,16 @@
+ %html
+   %head
+-    %title= issues.first.title
++    %title= h issues.first.title
+     %link{:href => "/style.css", :rel => "stylesheet", :type => "text/css",
+         :media => "all"}
+   %body
+     .main
+       - issues.each do |issue|
+-        %h1= issue.title
++        %h1= h issue.title
+         .backptr
+           %a{:href => '/'} &laquo; top page
+         .description
+-          %p= issue.desc
++          %p= h issue.desc
+         %h2 Details
+         %table
+           %tbody
+@@ -25,7 +25,9 @@
+               %td.attrval= issue.creation_time
+             %tr
+               %td.attrname Creator:
+-              %td.attrval= issue.reporter
++              %td.attrval
++                %img{:src => gravatar(issue.reporter)}
++                = h issue.reporter
+             %tr
+               %td.attrname Release:
+               %td.attrval= issue.release
+@@ -43,7 +45,7 @@
+               %td.attrval
+                 - issue.references.each do |ref|
+                   %li
+-                    %a{:href => ref}= ref
++                    %a{:href => ref}= h ref
+         %h2 Issue log
+         %table.log
+           %tbody
+@@ -51,7 +53,9 @@
+               - time, who, what, comment = log_event
+               %tr{:class => i.odd? ? 'odd-row' : 'even-row'}
+                 %td.date= time
+-                %td.person= who
++                %td.person
++                  %img{:src => gravatar(who)}
++                  = who
+                 %td.logwhat= what
+                 %td.message= comment
+     .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
+diff --git a/sheila/sheila.rb b/sheila/sheila.rb
+index 8e40f34..6d525fb 100644
+--- a/sheila/sheila.rb
++++ b/sheila/sheila.rb
+@@ -16,7 +16,7 @@ class String
+   def gravatar(s=20)
+     email = split.last
+     email = email[1, email.size - 2] if email[0, 1] == '<'
+-    "http://www.gravatar.com/avatar/#{Digest::MD5.hexdigest(email)}?s=#{s}"
++    "http://www.gravatar.com/avatar/#{Digest::MD5.hexdigest(email)}?s=#{s}&default=identicon"
+   end
+ end
+ 
