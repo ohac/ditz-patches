@@ -1,5 +1,5 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..b572a42 100755
+index fe4625a..8441efe 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
 @@ -30,7 +30,7 @@ def ditz_get_storage
@@ -20,7 +20,7 @@ index fe4625a..b572a42 100755
    project = storage.load
    releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
      h[r] = {
-@@ -58,14 +58,56 @@ get '/' do
+@@ -58,14 +58,57 @@ get '/' do
    haml :index, :locals => { :releases => releases }
  end
  
@@ -29,7 +29,8 @@ index fe4625a..b572a42 100755
 +  project = storage.load
 +  releases = project.releases
 +  components = project.components
-+  haml :new, :locals => { :releases => releases, :components => components }
++  haml :new, :locals => { :releases => releases, :components => components,
++      :reference => params[:u], :summary => params[:t], :details => params[:s] }
 +end
 +
 +get '/i/*' do |arg|
@@ -79,7 +80,7 @@ index fe4625a..b572a42 100755
 +    issue.log "added reference #{issue.references.size}", user, ''
 +  end
 +  storage.save project
-+  redirect '/'
++  redirect "/i/#{issue.id}"
  end
 diff --git a/contrib/tombloo_ditz.js b/contrib/tombloo_ditz.js
 new file mode 100644
@@ -120,20 +121,22 @@ index 0000000..059e1f0
 +	},
 +});
 diff --git a/lib/views/index.haml b/lib/views/index.haml
-index a6250c1..a9c48b0 100644
+index a6250c1..61b8d3b 100644
 --- a/lib/views/index.haml
 +++ b/lib/views/index.haml
-@@ -6,6 +6,7 @@
+@@ -6,6 +6,9 @@
    %body
      .main
        %h1 Issue Tracker
 +      %a{:href => "/i/new"} Add a new issue
++      %br
++      %a{:href => "javascript:var%20d=document,w=window,e=w.getSelection,k=d.getSelection,x=d.selection,s=(e?e():(k)?k():(x?x.createRange().text:0)),f='http://localhost:4567/i/new',l=d.location,e=encodeURIComponent,p='?u='+e(l.href)+'&t='+e(d.title)+'&s='+e(s),u=f+p;l.href=u;"} Bookmarklet
        %ul
          - releases.each do |key,release|
            %h2= release[:title]
 diff --git a/lib/views/new.haml b/lib/views/new.haml
 new file mode 100644
-index 0000000..ba9df31
+index 0000000..ebdb572
 --- /dev/null
 +++ b/lib/views/new.haml
 @@ -0,0 +1,38 @@
@@ -151,11 +154,11 @@ index 0000000..ba9df31
 +        %a{:href => '/'} &laquo; top page
 +      %form{:action => '/i', :method => 'post'}
 +        %p Summary
-+        %input{:type => 'text', :name => 'summary', :size => 80}
++        %input{:type => 'text', :name => 'summary', :size => 80, :value => summary}
 +        %p Details
-+        %textarea{:name => 'details', :rows => 12, :cols => 80}
++        %textarea{:name => 'details', :rows => 12, :cols => 80}= details
 +        %p Reference
-+        %input{:type => 'text', :name => 'reference', :size => 80}
++        %input{:type => 'text', :name => 'reference', :size => 80, :value => reference}
 +        %p Your name &amp; email
 +        %input{:type => 'text', :name => 'user'}
 +        %p Issue type
