@@ -1,5 +1,5 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..3984c8e 100755
+index fe4625a..30f8b1d 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
 @@ -13,6 +13,7 @@ $:.unshift(File.dirname(self_file) + "/../lib")
@@ -46,7 +46,7 @@ index fe4625a..3984c8e 100755
    project = storage.load
    releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
      h[r] = {
-@@ -58,14 +72,74 @@ get '/' do
+@@ -58,14 +72,88 @@ get '/' do
    haml :index, :locals => { :releases => releases }
  end
  
@@ -73,20 +73,34 @@ index fe4625a..3984c8e 100755
 +put '/i/*' do |arg|
 +  config, storage = ditz_get_storage
 +  comment = params[:comment]
-+  reference = params[:reference] # TODO
-+  component = params[:component] # TODO
-+  type = params[:type] # TODO
++  reference = params[:reference]
++  component = params[:component]
++  type = params[:type]
 +  user = params[:user]
 +  user = config.user if user.nil? || user.size == 0
-+  release = params[:release] # TODO
-+  if comment.size > 0
-+    project = storage.load
-+    fn = File.join '.ditz', "issue-#{arg}.yaml"
-+    issue = Ditz::Issue.from fn
-+    issue.log "commented", user, comment
-+    project.add_issue issue
-+    storage.save project
++  release = params[:release]
++  project = storage.load
++  fn = File.join '.ditz', "issue-#{arg}.yaml"
++  issue = Ditz::Issue.from fn
++  project.add_issue issue
++  if reference && reference.size > 0
++    issue.add_reference reference
++    issue.log "added reference #{issue.references.size}", user, ''
 +  end
++  if type != issue.type
++    issue.log "set type #{type} from #{issue.type}", user, ''
++    issue.type = type.to_sym
++  end
++  if release != issue.release
++    r = project.releases.find { |r| r.name == release }
++    issue.assign_to_release r, user, ''
++  end
++  if component != issue.component
++    c = project.components.find { |r| r.name == component }
++    issue.assign_to_component c, user, ''
++  end
++  issue.log "commented", user, comment if comment.size > 0
++  storage.save project
 +  redirect "/i/#{arg}"
 +end
 +
@@ -230,7 +244,7 @@ index 0000000..ebdb572
 +          %input{:type => 'submit', :value => 'Submit issue'}
 +    .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
 diff --git a/lib/views/show.haml b/lib/views/show.haml
-index 98714b5..19f225f 100644
+index 98714b5..83d5ddd 100644
 --- a/lib/views/show.haml
 +++ b/lib/views/show.haml
 @@ -1,16 +1,16 @@
@@ -275,7 +289,7 @@ index 98714b5..19f225f 100644
          %h2 Issue log
          %table.log
            %tbody
-@@ -51,7 +53,35 @@
+@@ -51,7 +53,36 @@
                - time, who, what, comment = log_event
                %tr{:class => i.odd? ? 'odd-row' : 'even-row'}
                  %td.date= time
@@ -300,17 +314,18 @@ index 98714b5..19f225f 100644
 +          %p Issue type
 +          - [:bugfix, :feature, :task].each do |t|
 +            %input{:type => 'radio', :id => t, :name => 'type', :value => t,
-+                :checked => t == :bugfix}
++                :checked => t == issue.type}
 +            %label{:for => t}= t
 +          %p Release, if any
 +          %select{:name => 'release'}
-+            %option{:value => '', :selected => true} No release
++            - if issue.release.nil?
++              %option{:value => '', :selected => issue.release.nil?} No release
 +            - releases.each do |r|
-+              %option{:value => r.name, :selected => false}= r.name
++              %option{:value => r.name, :selected => issue.release == r.name}= r.name
 +          %p Component
 +          %select{:name => 'component'}
 +            - components.each_with_index do |c, i|
-+              %option{:value => c.name, :selected => i == 0}= c.name
++              %option{:value => c.name, :selected => issue.component == c.name}= c.name
 +          %p
 +            %input{:type => 'submit', :value => 'Submit issue'}
      .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
