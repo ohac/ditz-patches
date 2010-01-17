@@ -1,5 +1,5 @@
 diff --git a/bin/ditzweb b/bin/ditzweb
-index fe4625a..0265b30 100755
+index fe4625a..3984c8e 100755
 --- a/bin/ditzweb
 +++ b/bin/ditzweb
 @@ -13,6 +13,7 @@ $:.unshift(File.dirname(self_file) + "/../lib")
@@ -10,7 +10,7 @@ index fe4625a..0265b30 100755
  
  set :sessions, true
  set :root, File.dirname(self_file) + "/../lib"
-@@ -30,12 +31,22 @@ def ditz_get_storage
+@@ -30,12 +31,25 @@ def ditz_get_storage
    config.use_editor_if_possible = false # overwrite
    config.paginate = "never" # overwrite
    issue_dir = Pathname.new(config.issue_dir)
@@ -29,12 +29,15 @@ index fe4625a..0265b30 100755
 +    default = '&default=identicon'
 +    "http://www.gravatar.com/avatar/#{Digest::MD5.hexdigest(email)}?s=#{s}#{default}"
 +  end
++  def wiki(text)
++    text.gsub(/\{issue ([[:xdigit:]]{40})\}/, '<a href="/i/\1">\1</a>')
++  end
 +end
 +
  before do
   request_uri = case request.env['REQUEST_URI']
     when /\.css$/; :css
-@@ -46,7 +57,7 @@ before do
+@@ -46,7 +60,7 @@ before do
  end
  
  get '/' do
@@ -43,7 +46,7 @@ index fe4625a..0265b30 100755
    project = storage.load
    releases = (project.unreleased_releases + [:unassigned]).inject({}) do |h,r|
      h[r] = {
-@@ -58,14 +69,74 @@ get '/' do
+@@ -58,14 +72,74 @@ get '/' do
    haml :index, :locals => { :releases => releases }
  end
  
@@ -227,7 +230,7 @@ index 0000000..ebdb572
 +          %input{:type => 'submit', :value => 'Submit issue'}
 +    .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
 diff --git a/lib/views/show.haml b/lib/views/show.haml
-index 98714b5..761f97b 100644
+index 98714b5..19f225f 100644
 --- a/lib/views/show.haml
 +++ b/lib/views/show.haml
 @@ -1,16 +1,16 @@
@@ -246,7 +249,7 @@ index 98714b5..761f97b 100644
            %a{:href => '/'} &laquo; top page
          .description
 -          %p= issue.desc
-+          %p= h issue.desc
++          %p= h(wiki issue.desc)
          %h2 Details
          %table
            %tbody
@@ -272,16 +275,20 @@ index 98714b5..761f97b 100644
          %h2 Issue log
          %table.log
            %tbody
-@@ -51,7 +53,33 @@
+@@ -51,7 +53,35 @@
                - time, who, what, comment = log_event
                %tr{:class => i.odd? ? 'odd-row' : 'even-row'}
                  %td.date= time
 -                %td.person= who
+-                %td.logwhat= what
+-                %td.message= comment
 +                %td.person
 +                  %img{:src => gravatar(who)}
-+                  = who
-                 %td.logwhat= what
-                 %td.message= comment
++                  = h who
++                %td.message= what
++              %tr
++                %td.logcomment{:colspan => 3}
++                  %pre= wiki comment
 +        %form{:action => "/i/#{issue.id}", :method => 'post'}
 +          %input{:type => 'hidden', :name => '_method', :value => 'put'}
 +          %p Comment
