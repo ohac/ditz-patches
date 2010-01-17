@@ -1,0 +1,98 @@
+diff --git a/bin/ditzweb b/bin/ditzweb
+index fe4625a..de387e0 100755
+--- a/bin/ditzweb
++++ b/bin/ditzweb
+@@ -58,14 +58,33 @@ get '/' do
+   haml :index, :locals => { :releases => releases }
+ end
+ 
++get '/i/*' do |arg|
++  fn = File.join '.ditz', "issue-#{arg}*.yaml"
++  issues = Dir[fn].map { |fn| Ditz::Issue.from fn }
++  haml :show, :locals => { :issues => issues }
++end
++
+ # lib/ditz/operator.rb
+ # lib/ditz/model.rb
+ # lib/ditz/model-objects.rb
+ # lib/ditz/file-storage.rb
+ # lib/views/index.haml
+ # lib/views/show.haml
+-get '/i/*' do |arg|
+-  fn = File.join '.ditz', "issue-#{arg}*.yaml"
+-  issues = Dir[fn].map { |fn| Ditz::Issue.from fn }
+-  haml :show, :locals => { :issues => issues }
++# lib/views/new.haml
++get '/new' do
++  storage = ditz_get_storage
++  project = storage.load
++  releases = project.releases
++  components = project.components
++  haml :new, :locals => { :releases => releases, :components => components }
++end
++
++post '/' do
++  p params[:summary]
++  p params[:details]
++  p params[:reference]
++  p params[:type]
++  p params[:release]
++  p params[:component]
++  redirect '/'
+ end
+diff --git a/lib/views/index.haml b/lib/views/index.haml
+index a6250c1..3d6581f 100644
+--- a/lib/views/index.haml
++++ b/lib/views/index.haml
+@@ -6,6 +6,7 @@
+   %body
+     .main
+       %h1 Issue Tracker
++      %a{:href => "/new"} Add a new issue
+       %ul
+         - releases.each do |key,release|
+           %h2= release[:title]
+diff --git a/lib/views/new.haml b/lib/views/new.haml
+new file mode 100644
+index 0000000..bf060bb
+--- /dev/null
++++ b/lib/views/new.haml
+@@ -0,0 +1,38 @@
++- p releases
++- p components
++%html
++  %head
++    %title Add a new issue
++    %link{:href => "/style.css", :rel => "stylesheet", :type => "text/css",
++        :media => "screen"}
++  %body
++    .main
++      %h1 Add a new issue
++      .backptr
++        %a{:href => '/'} &laquo; top page
++      %form{:action => '/', :method => 'post'}
++        %p Summary
++        %input{:type => 'text', :name => 'summary', :size => 80}
++        %p Details
++        %textarea{:name => 'details', :rows => 12, :cols => 80}
++        %p Reference
++        %input{:type => 'text', :name => 'reference', :size => 80}
++        %p Your name &amp; email
++        %input{:type => 'text', :name => 'user'}
++        %p Issue type
++        - [:bugfix, :feature, :task].each do |t|
++          %input{:type => 'radio', :id => t, :name => 'type', :value => t,
++              :checked => t == :bugfix}
++          %label{:for => t}= t
++        %p Release, if any
++        %select{:name => 'release'}
++          %option{:value => '', :selected => true} No release
++          - releases.each do |r|
++            %option{:value => r.name, :selected => false}= r.name
++        %p Component
++        %select{:name => 'component'}
++          - components.each_with_index do |c, i|
++            %option{:value => c.name, :selected => i == 0}= c.name
++        %p
++          %input{:type => 'submit', :value => 'Submit issue'}
++    .footer Powered by <a href="http://ditz.rubyforge.org/">ditz</a>.
