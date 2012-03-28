@@ -72,19 +72,19 @@ index ac86482..a495ab6 100644
 +icalendar
 +---------
 +
-+This plugin adds ability to export full todo list in iCalendar (RFC 2445) format. 
++This plugin adds ability to export full todo list in iCalendar (RFC 2445) format.
 +It is useful for integration with different pim software like KOrganizer.
 +
 +Issues are converted to VTODO entries with completion status set to 50 if
 +its state is :in_progress, 100 if it's closed and 0 otherwise.
-+Progress for release is 100 if it's released otherwise it's 99 * closed/all 
-+issues. So maximum for active release is 99 and it's not shown as done until 
++Progress for release is 100 if it's released otherwise it's 99 * closed/all
++issues. So maximum for active release is 99 and it's not shown as done until
 +released.
 +
 +Commands added:
 +  ditz todo-ics: generate full todo list in iCalendar format
 +
-+Usage: 
++Usage:
 +  1. add a line "- icalendar" to the .ditz-plugins file in the project root
 +
  issue-claiming
@@ -105,13 +105,13 @@ index ac86482..a495ab6 100644
       root
 -  2. use the above commands to abandon
 +  2. (optional:) add a 'devs' key to project.yaml, e.g:
-+devs: 
++devs:
 +  :roy: Roy Baty <roy@marsproject.com>
 +  :pris: Pris Stratton <pris@marsproject.com>
  
  issue-labeling
  --------------
-@@ -138,3 +163,35 @@ Usage:
+@@ -138,3 +163,34 @@ Usage:
       root
    2. use the above commands to abandon
  
@@ -143,10 +143,9 @@ index ac86482..a495ab6 100644
 +another. This plugin provides a canonical, immutable ID from the
 +time of issue creation.
 +
-+Usage: 
++Usage:
 +  1. add a line "- sha-names" to the .ditz-plugins file in the
 +  project root
-+
 diff --git a/Rakefile b/Rakefile
 index 57ebb86..a1c79d6 100644
 --- a/Rakefile
@@ -183,32 +182,6 @@ index dde565e..8fe0db1 100644
  0.5
  ---
  
-diff --git a/ditz.gemspec b/ditz.gemspec
-index 9c0aea9..e4d9501 100644
---- a/ditz.gemspec
-+++ b/ditz.gemspec
-@@ -1,16 +1,16 @@
- Gem::Specification.new do |s|
--  s.name = %q{ditz}
--  s.version = "0.5"
-+  s.name = %q{ohac-ditz}
-+  s.version = "0.5.2"
- 
-   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
-   s.authors = ["William Morgan"]
-   s.date = %q{2008-09-05}
--  s.default_executable = %q{ditz}
-+  s.default_executable = %q{ditz coditz.rb}
-   s.description = %q{Ditz is a simple, light-weight distributed issue tracker designed to work with distributed version control systems like git, darcs, Mercurial, and Bazaar. It can also be used with centralized systems like SVN.  Ditz maintains an issue database directory on disk, with files written in a line-based and human-editable format. This directory can be kept under version control, alongside project code.  Ditz provides a simple, console-based interface for creating and updating the issue database files, and some basic static HTML generation capabilities for producing world-readable status pages (for a demo, see the ditz ditz page).  Ditz includes a robust plugin system for adding commands, model fields, and modifying output. See PLUGINS.txt for documentation on the pre-shipped plugins.  Ditz currently offers no central public method of bug submission.   == USING DITZ  There are several different ways to use Ditz:  1. Treat issue change the same as code change: include it as part of commits, and merge it with changes from other developers, resolving conflicts in the usual manner. 2. Keep the issue database in the repository but in a separate branch. Issue changes can be managed by your VCS, but is not tied directly to code commits. 3. Keep the issue database separate and not under VCS at all.}
-   s.email = %q{wmorgan-ditz@masanjin.net}
--  s.executables = ["ditz"]
-+  s.executables = ["ditz coditz.rb"]
-   s.extra_rdoc_files = ["Manifest.txt", "PLUGINS.txt", "README.txt"]
--  s.files = ["Changelog", "INSTALL", "LICENSE", "Manifest.txt", "PLUGINS.txt", "README.txt", "Rakefile", "ReleaseNotes", "bin/ditz", "contrib/completion/_ditz.zsh", "contrib/completion/ditz.bash", "lib/ditz.rb", "lib/ditz/file-storage.rb", "lib/ditz/hook.rb", "lib/ditz/html.rb", "lib/ditz/lowline.rb", "lib/ditz/model-objects.rb", "lib/ditz/model.rb", "lib/ditz/operator.rb", "lib/ditz/plugins/git-sync.rb", "lib/ditz/plugins/git.rb", "lib/ditz/plugins/issue-claiming.rb", "lib/ditz/plugins/issue-labeling.rb", "lib/ditz/util.rb", "lib/ditz/view.rb", "lib/ditz/views.rb", "share/ditz/index.rhtml", "share/ditz/issue.rhtml", "share/ditz/issue_table.rhtml", "share/ditz/release.rhtml", "share/ditz/unassigned.rhtml", "share/ditz/component.rhtml", "share/ditz/style.css", "share/ditz/blue-check.png", "share/ditz/green-bar.png", "share/ditz/green-check.png", "share/ditz/red-check.png", "share/ditz/yellow-bar.png", "man/man1/ditz.1", "setup.rb"]
-+  s.files = ["Changelog", "INSTALL", "LICENSE", "Manifest.txt", "PLUGINS.txt", "README.txt", "Rakefile", "ReleaseNotes", "bin/ditz", "contrib/completion/_ditz.zsh", "contrib/completion/ditz.bash", "lib/ditz.rb", "lib/ditz/file-storage.rb", "lib/ditz/hook.rb", "lib/ditz/html.rb", "lib/ditz/lowline.rb", "lib/ditz/model-objects.rb", "lib/ditz/model.rb", "lib/ditz/operator.rb", "lib/ditz/plugins/git-sync.rb", "lib/ditz/plugins/git.rb", "lib/ditz/plugins/issue-claiming.rb", "lib/ditz/plugins/issue-labeling.rb", "lib/ditz/util.rb", "lib/ditz/view.rb", "lib/ditz/views.rb", "share/ditz/index.rhtml", "share/ditz/issue.rhtml", "share/ditz/issue_table.rhtml", "share/ditz/release.rhtml", "share/ditz/unassigned.rhtml", "share/ditz/component.rhtml", "share/ditz/style.css", "share/ditz/blue-check.png", "share/ditz/green-bar.png", "share/ditz/green-check.png", "share/ditz/red-check.png", "share/ditz/yellow-bar.png", "man/man1/ditz.1", "setup.rb", "bin/coditz.rb" , "contrib/bookmarklet.js" , "lib/ditz/plugins/icalendar.rb" , "lib/ditz/plugins/mercurial.rb" , "lib/ditz/plugins/sha-names.rb" , "sheila/sheila.rb"]
-   s.has_rdoc = true
-   s.homepage = %q{http://ditz.rubyforge.org}
-   s.rdoc_options = ["--main", "README.txt"]
 diff --git a/lib/ditz.rb b/lib/ditz.rb
 index 3248931..62fca56 100644
 --- a/lib/ditz.rb

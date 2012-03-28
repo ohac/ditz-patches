@@ -1,10 +1,9 @@
 warning.patch
 coditz.patch
 coditz_for_0.5.patch
-ruby19.patch
 performance.patch
 nointerpolated.patch
 bench.patch
-ohacgem.patch
-sinatra.patch
 sinatra2.patch
+ohacgem.patch
+ohacgem2.patch
